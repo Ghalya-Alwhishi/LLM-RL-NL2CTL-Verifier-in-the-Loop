@@ -1,0 +1,77 @@
+% SOB-ID FSM (TikZ)
+% Usage in LaTeX:
+%   \usepackage{tikz}
+%   \usetikzlibrary{arrows.meta,positioning}
+%   ...
+%   \begin{figure}[t]
+%   \centering
+%   \input{sob_id_fsm.tex}
+%   \caption{...}\label{fig:sobid-fsm}
+%   \end{figure}
+
+\begin{tikzpicture}[
+  >=Stealth,
+  node distance=18mm and 18mm,
+  every node/.style={draw, rounded corners, align=left, font=\small, inner sep=3pt},
+  arrow/.style={->, thick}
+]
+
+\node (s0) {s0: login\_page};
+\node (s1) [right=of s0] {s1: auth\_attempted\\captcha\_challenge};
+\node (s2) [right=of s1, yshift=15mm] {s2: mfa\_sent};
+\node (s3) [right=of s1, yshift=-15mm] {s3: session\_active\\device\_trusted};
+\node (s4) [below=of s1] {s4: authentication\_failed};
+
+\node (s5) [right=of s2] {s5: geolocation\_mismatch\\ip\_blacklisted\\anomaly\_score\_high};
+\node (s6) [right=of s3] {s6: threshold\_breached\\transaction\_flagged\\alert\_triggered\\anomaly\_score\_high};
+\node (s11) [right=of s6, yshift=15mm] {s11: malware\_detected\\alert\_triggered};
+
+\node (s7) [right=of s6, yshift=-15mm] {s7: manual\_review\_requested};
+\node (s8) [right=of s7] {s8: account\_locked\\alert\_triggered};
+\node (s10) [below=of s7] {s10: password\_reset\_required};
+\node (s9) [below=of s8] {s9: session\_terminated};
+
+% Start arrow (initial state is s0)
+\node (start) [left=10mm of s0, draw=none] {};
+\draw[arrow] (start) -- (s0);
+
+% Edges (exactly match the NuSMV model)
+\draw[arrow] (s0) -- (s1);
+
+\draw[arrow] (s1) -- (s2);
+\draw[arrow] (s1) -- (s3);
+\draw[arrow] (s1) -- (s4);
+
+\draw[arrow] (s2) -- (s3);
+\draw[arrow] (s2) -- (s4);
+\draw[arrow] (s2) -- (s5);
+
+\draw[arrow] (s3) -- (s6);
+\draw[arrow] (s3) -- (s11);
+\draw[arrow] (s3) -- (s9);
+\draw[arrow] (s3) edge[loop below] (s3);
+
+\draw[arrow] (s4) -- (s1);
+\draw[arrow] (s4) -- (s8);
+
+\draw[arrow] (s5) -- (s6);
+\draw[arrow] (s5) -- (s7);
+\draw[arrow] (s5) -- (s3);
+
+\draw[arrow] (s6) -- (s7);
+\draw[arrow] (s6) -- (s8);
+
+\draw[arrow] (s7) -- (s3);
+\draw[arrow] (s7) -- (s8);
+\draw[arrow] (s7) -- (s10);
+
+\draw[arrow] (s8) -- (s9);
+\draw[arrow] (s9) -- (s0);
+
+\draw[arrow] (s10) -- (s1);
+\draw[arrow] (s10) -- (s9);
+
+\draw[arrow] (s11) -- (s7);
+\draw[arrow] (s11) -- (s8);
+
+\end{tikzpicture}

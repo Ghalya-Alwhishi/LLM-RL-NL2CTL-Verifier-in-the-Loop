@@ -1,0 +1,44 @@
+MODULE main
+
+VAR
+  state : { s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11 };
+
+ASSIGN
+  init(state) := s0;
+
+  next(state) := case
+    state = s0  : s1;
+    state = s1  : { s2, s3, s4 };
+    state = s2  : { s3, s4, s5 };
+    state = s3  : { s3, s6, s11, s9 };
+    state = s4  : { s1, s8 };
+    state = s5  : { s6, s7, s3 };
+    state = s6  : { s7, s8 };
+    state = s7  : { s3, s8, s10 };
+    state = s8  : s9;
+    state = s9  : s0;
+    state = s10 : { s1, s9 };
+    state = s11 : { s7, s8 };
+    esac;
+
+DEFINE
+  login_page               := state = s0;
+  auth_attempted           := state = s1;
+  captcha_challenge        := state = s1;
+  mfa_sent                 := state = s2;
+  session_active           := state = s3;
+  device_trusted           := state = s3;
+  authentication_failed    := state = s4;
+  geolocation_mismatch     := state = s5;
+  ip_blacklisted           := state = s5;
+  anomaly_score_high       := (state = s5) | (state = s6);
+  threshold_breached       := state = s6;
+  transaction_flagged      := state = s6;
+  alert_triggered          := (state = s6) | (state = s8) | (state = s11);
+  manual_review_requested  := state = s7;
+  account_locked           := state = s8;
+  session_terminated       := state = s9;
+  password_reset_required  := state = s10;
+  malware_detected         := state = s11;
+
+-- CTL properties

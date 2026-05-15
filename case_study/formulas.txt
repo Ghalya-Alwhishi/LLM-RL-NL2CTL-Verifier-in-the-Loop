@@ -1,0 +1,20 @@
+Always, session_active and account_locked are not both true.
+Always, if ip_blacklisted and geolocation_mismatch then in the next state threshold_breached.
+Always, if manual_review_requested then eventually session_active or account_locked or password_reset_required.
+Always, if session_active then eventually session_terminated.
+Always, if threshold_breached then alert_triggered holds now.
+Always, if threshold_breached then on all paths alert_triggered holds until manual_review_requested or account_locked.
+Always, if login_page then there exists a path where eventually session_active.
+Always, if account_locked then always not session_active.
+Always, if malware_detected then eventually account_locked or manual_review_requested.
+There exists a path where session_active always holds and there exists a next state where session_active.
+Always, if mfa_sent then eventually session_active or account_locked or manual_review_requested.
+Always, if anomaly_score_high then eventually threshold_breached or manual_review_requested.
+Always, if transaction_flagged then in the next state manual_review_requested or account_locked.
+Always, there exists a path where eventually session_terminated.
+Always, if authentication_failed then eventually auth_attempted or account_locked.
+Always, if password_reset_required then on all paths not session_active holds until auth_attempted.
+Always, if session_active then not authentication_failed.
+Always, if alert_triggered then eventually session_terminated or account_locked or manual_review_requested.
+Always, if anomaly_score_high then there exists a path where eventually account_locked.
+There exists a path where geolocation_mismatch holds until account_locked.

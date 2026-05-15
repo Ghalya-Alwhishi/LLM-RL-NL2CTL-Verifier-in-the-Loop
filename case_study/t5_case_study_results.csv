@@ -1,0 +1,326 @@
+idx,nl,ctl_best,ctl_raw,model_used,translation_time_sec,nusmv_status,verification_time_sec,counterexample_snippet,nbest
+1,"Always, session_active and account_locked are not both true.",AG !(session_active & account_locked),AG (!session_active & account_locked),GENERAL,0.32642474599924753,true,0.011100055000497377,,AG (!session_active & account_locked) ||| AG ((session_active & account_locked)) ||| AG (session_active & account_locked)
+2,"Always, if ip_blacklisted and geolocation_mismatch then in the next state threshold_breached.",AG ((ip_blacklisted & geolocation_mismatch) -> AX threshold_breached),AG ((ip_blacklisted & geolocation_mismatch) -> AX threshold_breached),GENERAL,0.6385928239997156,false,0.010023062000982463,"-- as demonstrated by the following execution sequence
+Trace Description: CTL Counterexample 
+Trace Type: Counterexample 
+  -> State: 1.1 <-
+    state = s0
+    malware_detected = FALSE
+    password_reset_required = FALSE
+    session_terminated = FALSE
+    account_locked = FALSE
+    manual_review_requested = FALSE
+    alert_triggered = FALSE
+    transaction_flagged = FALSE
+    threshold_breached = FALSE
+    anomaly_score_high = FALSE
+    ip_blacklisted = FALSE
+    geolocation_mismatch = FALSE
+    authentication_failed = FALSE
+    device_trusted = FALSE
+    session_active = FALSE
+    mfa_sent = FALSE
+    captcha_challenge = FALSE
+    auth_attempted = FALSE
+    login_page = TRUE
+  -> State: 1.2 <-
+    state = s1
+    captcha_challenge = TRUE
+    auth_attempted = TRUE
+    login_page = FALSE
+  -> State: 1.3 <-
+    state = s2
+    mfa_sent = TRUE
+    captcha_challenge = FALSE
+    auth_attempted = FALSE
+  -> State: 1.4 <-
+    state = s5
+    anomaly_score_high = TRUE
+    ip_blacklisted = TRUE
+    geolocation_mismatch = TRUE
+    mfa_sent = FALSE
+  -> State: 1.5 <-
+    state = s7
+    manual_review_requested = TRUE
+    anomaly_score_high = FALSE
+    ip_blacklisted = FALSE
+    geolocation_mismatch = FALSE
+",AG ((ip_blacklisted & geolocation_mismatch) -> AX threshold_breached) ||| AG ((ip_blacklisted & geolocation_mismatch) AX threshold_breached) ||| AG ((ip_blacklisted & geolocation_mismatch) -- AX threshold_breached) ||| AG (ip_blacklisted & geolocation_mismatch) ||| AG ((ip_blacklisted & geolocation_mismatch) au niveau threshold_breached)
+3,"Always, if manual_review_requested then eventually session_active or account_locked or password_reset_required.",AG (manual_review_requested -> AF (session_active | account_locked | password_reset_required)),AG (manual_review_requested -> AF session_active | account_locked | password_reset_required),GENERAL,0.7612972409988288,true,0.010086104000947671,,AG (manual_review_requested -> AF (session_active | account_locked | password_reset_required)) ||| AG (manual_review_requested -> (AF (session_active | account_locked | password_reset_required))) ||| AG (manual_review_requested -> AF (sessions_active | account_locked | password_reset_required)) ||| AG (manual_review_requested | AF (session_active | account_locked | password_reset_required)) ||| AG (manual_review_requested (AF (session_active | account_locked | password_reset_required)))
+4,"Always, if session_active then eventually session_terminated.",AG (session_active -> AF session_terminated),AG (session_active -> AF session_terminated),GENERAL,0.3933216250006808,false,0.010597047999908682,"-- as demonstrated by the following execution sequence
+Trace Description: CTL Counterexample 
+Trace Type: Counterexample 
+  -> State: 1.1 <-
+    state = s0
+    malware_detected = FALSE
+    password_reset_required = FALSE
+    session_terminated = FALSE
+    account_locked = FALSE
+    manual_review_requested = FALSE
+    alert_triggered = FALSE
+    transaction_flagged = FALSE
+    threshold_breached = FALSE
+    anomaly_score_high = FALSE
+    ip_blacklisted = FALSE
+    geolocation_mismatch = FALSE
+    authentication_failed = FALSE
+    device_trusted = FALSE
+    session_active = FALSE
+    mfa_sent = FALSE
+    captcha_challenge = FALSE
+    auth_attempted = FALSE
+    login_page = TRUE
+  -> State: 1.2 <-
+    state = s1
+    captcha_challenge = TRUE
+    auth_attempted = TRUE
+    login_page = FALSE
+  -- Loop starts here
+  -> State: 1.3 <-
+    state = s3
+    device_trusted = TRUE
+    session_active = TRUE
+    captcha_challenge = FALSE
+    auth_attempted = FALSE
+  -> State: 1.4 <-
+",AG (session_active -> AF session_terminated) ||| AG (session_active then AF session_terminated) ||| AG(session_active -> AF session_terminated) ||| AG (session_activ -> AF session_terminated) ||| AG (session_active -> AF sessions_terminated)
+5,"Always, if threshold_breached then alert_triggered holds now.",AG (threshold_breached -> alert_triggered),AG (threshold_breached -> alert_triggered),GENERAL,0.4267652819999057,true,0.010222568000244792,,AG (threshold_breached -> alert_triggered) ||| AG (threshold_breached -> now alert_triggered) ||| AG (threshold_breached -> alarm_triggered) ||| AG (threshold_breached -> Alert_triggered) ||| AG (threshold_breached -> warning_triggered)
+6,"Always, if threshold_breached then on all paths alert_triggered holds until manual_review_requested or account_locked.",AG (threshold_breached -> A [ alert_triggered U (manual_review_requested | account_locked) ]),AG (threshold_breached -> A [alert_triggered U manual_review_requested | account_locked)],UNTIL,0.7751546680010506,true,0.010597460999633768,,AG (threshold_breached -> A [alert_triggered U manual_review_requested | account_locked)] ||| AG (threshold_breached -> A [alert_triggered U [manual_review_requested | account_locked)] ||| AG (threshold_breached -> A [alert_triggered U (manual_review_requested | account_locked)) ||| AG (threshold_breached -> A [alert_triggered U manual_review_requested | account_locked]) ||| AG (threshold_breached -> A [alert_triggered U])
+7,"Always, if login_page then there exists a path where eventually session_active.",AG (login_page -> EF session_active),AG (login_page -> AF session_active),GENERAL,0.34707536800124217,true,0.01021400800163974,,AG (login_page -> EF session_active) ||| AG (login_page -> AF session_active) ||| AG (logIn_page -> AF session_active) ||| AG (login_page -> EX session_active) ||| AG (log in_page -> AF session_active) ||| AG (login_page -> AF sessions_active) ||| AG(login_page -> AF session_active)
+8,"Always, if account_locked then always not session_active.",AG (account_locked -> AG !session_active),AG (account_locked -> !session_active),GENERAL,0.4037885070010816,false,0.010969217999445391,"-- as demonstrated by the following execution sequence
+Trace Description: CTL Counterexample 
+Trace Type: Counterexample 
+  -> State: 1.1 <-
+    state = s0
+    malware_detected = FALSE
+    password_reset_required = FALSE
+    session_terminated = FALSE
+    account_locked = FALSE
+    manual_review_requested = FALSE
+    alert_triggered = FALSE
+    transaction_flagged = FALSE
+    threshold_breached = FALSE
+    anomaly_score_high = FALSE
+    ip_blacklisted = FALSE
+    geolocation_mismatch = FALSE
+    authentication_failed = FALSE
+    device_trusted = FALSE
+    session_active = FALSE
+    mfa_sent = FALSE
+    captcha_challenge = FALSE
+    auth_attempted = FALSE
+    login_page = TRUE
+  -> State: 1.2 <-
+    state = s1
+    captcha_challenge = TRUE
+    auth_attempted = TRUE
+    login_page = FALSE
+  -> State: 1.3 <-
+    state = s4
+    authentication_failed = TRUE
+    captcha_challenge = FALSE
+    auth_attempted = FALSE
+  -> State: 1.4 <-
+    state = s8
+    account_locked = TRUE
+    alert_triggered = TRUE
+    authentication_failed = FALSE
+  -> State: 1.5 <-
+    state = s9
+    session_terminated = TRUE
+    account_locked = FALSE
+    alert_triggered = FALSE
+  -> State: 1.6 <-
+    state = s0
+    session_terminated = FALSE
+    login_page = TRUE
+  -> State: 1.7 <-
+    state = s1
+    captcha_challenge = TRUE
+    auth_attempted = TRUE
+    login_page = FALSE
+  -> State: 1.8 <-
+    state = s3
+    device_trusted = TRUE
+    session_active = TRUE
+    captcha_challenge = FALSE
+    auth_attempted = FALSE
+",AG (account_locked -> AG !session_active) ||| AG (account_locked -> !session_active) ||| AG (account_locked -> AX session_active) ||| AG (account_locked -> AF !session_active) ||| AG (account_locked -> AX !session_active)
+9,"Always, if malware_detected then eventually account_locked or manual_review_requested.",AG (malware_detected -> AF (account_locked | manual_review_requested)),AG (malware_detected -> AF account_locked | manual_review_requested),GENERAL,0.581936818000031,true,0.010145485999601078,,AG (malware_detected -> AF (account_locked | manual_review_requested)) ||| AG (malware_detected -> AF (account_locked | manuel_review_requested)) ||| AG (malware_detected -> AF (accounts_locked | manual_review_requested)) ||| AG (malware_detected -> AF (balance_locked | manual_review_requested)) ||| AG (malware_detected then AF (account_locked | manual_review_requested))
+10,There exists a path where session_active always holds and there exists a next state where session_active.,EG (session_active & EX session_active),EG (session_active & EX session_active),GENERAL,0.35094178699910117,false,0.010547156998654827,"-- as demonstrated by the following execution sequence
+Trace Description: CTL Counterexample 
+Trace Type: Counterexample 
+  -> State: 1.1 <-
+    state = s0
+    malware_detected = FALSE
+    password_reset_required = FALSE
+    session_terminated = FALSE
+    account_locked = FALSE
+    manual_review_requested = FALSE
+    alert_triggered = FALSE
+    transaction_flagged = FALSE
+    threshold_breached = FALSE
+    anomaly_score_high = FALSE
+    ip_blacklisted = FALSE
+    geolocation_mismatch = FALSE
+    authentication_failed = FALSE
+    device_trusted = FALSE
+    session_active = FALSE
+    mfa_sent = FALSE
+    captcha_challenge = FALSE
+    auth_attempted = FALSE
+    login_page = TRUE
+",EG (session_active & EX session_active) ||| EG (session_active & AX session_active) ||| EG (session_active & EX sessions_active) ||| E(session_active & EX session_active) ||| EF (session_active & EX session_active)
+11,"Always, if mfa_sent then eventually session_active or account_locked or manual_review_requested.",AG (mfa_sent -> AF (session_active | account_locked | manual_review_requested)),AG (mfa_sent -> AF session_active | account_locked | manual_review_requested),GENERAL,0.6740647189999436,false,0.010853128000235301,"-- as demonstrated by the following execution sequence
+Trace Description: CTL Counterexample 
+Trace Type: Counterexample 
+  -> State: 1.1 <-
+    state = s0
+    malware_detected = FALSE
+    password_reset_required = FALSE
+    session_terminated = FALSE
+    account_locked = FALSE
+    manual_review_requested = FALSE
+    alert_triggered = FALSE
+    transaction_flagged = FALSE
+    threshold_breached = FALSE
+    anomaly_score_high = FALSE
+    ip_blacklisted = FALSE
+    geolocation_mismatch = FALSE
+    authentication_failed = FALSE
+    device_trusted = FALSE
+    session_active = FALSE
+    mfa_sent = FALSE
+    captcha_challenge = FALSE
+    auth_attempted = FALSE
+    login_page = TRUE
+  -> State: 1.2 <-
+    state = s1
+    captcha_challenge = TRUE
+    auth_attempted = TRUE
+    login_page = FALSE
+  -- Loop starts here
+  -> State: 1.3 <-
+    state = s2
+    mfa_sent = TRUE
+    captcha_challenge = FALSE
+    auth_attempted = FALSE
+  -> State: 1.4 <-
+    state = s4
+    authentication_failed = TRUE
+    mfa_sent = FALSE
+  -> State: 1.5 <-
+    state = s1
+    authentication_failed = FALSE
+    captcha_challenge = TRUE
+    auth_attempted = TRUE
+  -> State: 1.6 <-
+    state = s2
+    mfa_sent = TRUE
+    captcha_challenge = FALSE
+    auth_attempted = FALSE
+",AG (mfa_sent -> AF (session_active | account_locked | manual_review_requested)) ||| AG (mfa_sent -> (AF (session_active | account_locked | manual_review_requested))) ||| AG (mfa_sent | AF (session_active | account_locked | manual_review_requested)) ||| AG (mfa_sent -> AF (sessions_active | account_locked | manual_review_requested))
+12,"Always, if anomaly_score_high then eventually threshold_breached or manual_review_requested.",AG (anomaly_score_high -> AF (threshold_breached | manual_review_requested)),AG (anomaly_score_high -> AF threshold_breached | manual_review_requested),GENERAL,0.7028414140004315,false,0.010850152999410057,"-- as demonstrated by the following execution sequence
+Trace Description: CTL Counterexample 
+Trace Type: Counterexample 
+  -> State: 1.1 <-
+    state = s0
+    malware_detected = FALSE
+    password_reset_required = FALSE
+    session_terminated = FALSE
+    account_locked = FALSE
+    manual_review_requested = FALSE
+    alert_triggered = FALSE
+    transaction_flagged = FALSE
+    threshold_breached = FALSE
+    anomaly_score_high = FALSE
+    ip_blacklisted = FALSE
+    geolocation_mismatch = FALSE
+    authentication_failed = FALSE
+    device_trusted = FALSE
+    session_active = FALSE
+    mfa_sent = FALSE
+    captcha_challenge = FALSE
+    auth_attempted = FALSE
+    login_page = TRUE
+  -> State: 1.2 <-
+    state = s1
+    captcha_challenge = TRUE
+    auth_attempted = TRUE
+    login_page = FALSE
+  -> State: 1.3 <-
+    state = s2
+    mfa_sent = TRUE
+    captcha_challenge = FALSE
+    auth_attempted = FALSE
+  -- Loop starts here
+  -> State: 1.4 <-
+    state = s5
+    anomaly_score_high = TRUE
+    ip_blacklisted = TRUE
+    geolocation_mismatch = TRUE
+    mfa_sent = FALSE
+  -> State: 1.5 <-
+    state = s3
+    anomaly_score_high = FALSE
+    ip_blacklisted = FALSE
+    geolocation_mismatch = FALSE
+    device_trusted = TRUE
+    session_active = TRUE
+  -> State: 1.6 <-
+    state = s9
+    session_terminated = TRUE
+    device_trusted = FALSE
+    session_active = FALSE
+  -> State: 1.7 <-
+    state = s0
+    session_terminated = FALSE
+    login_page = TRUE
+  -> State: 1.8 <-
+    state = s1
+    captcha_challenge = TRUE
+    auth_attempted = TRUE
+    login_page = FALSE
+  -> State: 1.9 <-
+    state = s2
+    mfa_sent = TRUE
+    captcha_challenge = FALSE
+    auth_attempted = FALSE
+  -> State: 1.10 <-
+    state = s5
+    anomaly_score_high = TRUE
+    ip_blacklisted = TRUE
+    geolocation_mismatch = TRUE
+    mfa_sent = FALSE
+",AG (anomaly_score_high -> AF (threshold_breached | manual_review_requested)) ||| AG (anomaly_score_high -> AF (threshold_breached | manuel_review_requested)) ||| AG (anomaly_score_high then AF (threshold_breached | manual_review_requested)) ||| AG (anomaly_score_high | AF (threshold_breached | manual_review_requested)) ||| AG (alarm_score_high -> AF (threshold_breached | manual_review_requested))
+13,"Always, if transaction_flagged then in the next state manual_review_requested or account_locked.",AG ((transaction_flagged -> AX (manual_review_requested | account_locked))),AG ((transaction_flagged -> AX manual_review_requested | account_locked)),GENERAL,0.6296452209990093,true,0.010243589000310749,,AG ((transaction_flagged -> AX (manual_review_requested | account_locked))) ||| AG ((transaction_flagged -> EX (manual_review_requested | account_locked))) ||| AG ((transaction_flagged & EX (manual_review_requested | account_locked)))
+14,"Always, there exists a path where eventually session_terminated.",AG (EF session_terminated),AF session_terminated,GENERAL,0.21174571699884837,true,0.01072243700036779,,AG (EF session_terminated) ||| AF session_terminated ||| AG (AF session_terminated) ||| AG EF session_terminated ||| AF (session_terminated) ||| AG AF session_terminated
+15,"Always, if authentication_failed then eventually auth_attempted or account_locked.",AG (authentication_failed -> AF (auth_attempted | account_locked)),AG (authentication_failed -> AF auth_attempted | account_locked),GENERAL,0.49895110900069994,true,0.009803746001125546,,AG (authentication_failed -> AF (auth_attempted | account_locked)) ||| AG (authentication_failed -> AF (auxth_attempted | account_locked)) ||| AG (authentication_failed then AF (auth_attempted | account_locked)) ||| AG (authorization_failed -> AF (auth_attempted | account_locked)) ||| AG (authentication_failed -> AF (auth_attempted | credit_locked)) ||| AG (authentication_failed -> AF auth_attempted)
+16,"Always, if password_reset_required then on all paths not session_active holds until auth_attempted.",AG (password_reset_required -> A [ !session_active U auth_attempted ]),AG (password_reset_required -> A [!session_active U auth_attempted]),UNTIL,0.6822356329994363,true,0.010364780999225331,,AG (password_reset_required -> A [!session_active U auth_attempted]) ||| AG (password_reset_required -> A [!session_active Uauth_attempted]) ||| AG (password_reset_reaquired -> A [!session_active U auth_attempted]) ||| AG (password_reset_required -> A[!session_active U auth_attempted]) ||| AG (password_reaset_required -> A [!session_active U auth_attempted])
+17,"Always, if session_active then not authentication_failed.",AG (session_active -> !authentication_failed),AG (session_active -> !authentication_failed),GENERAL,0.3641256409991911,true,0.010257514000841184,,AG (session_active -> !authentication_failed) ||| AG (session_active -> !identification_failed) ||| AG (session_activ -> !authentication_failed) ||| AG (session_active -> !Authentication_failed) ||| AG (session_active then !authentication_failed)
+18,"Always, if alert_triggered then eventually session_terminated or account_locked or manual_review_requested.",AG (alert_triggered -> AF (session_terminated | account_locked | manual_review_requested)),AG (alert_triggered -> AF session_terminated | account_locked | manual_review_requested),GENERAL,0.6962930459994823,true,0.010222941999018076,,AG (alert_triggered -> AF (session_terminated | account_locked | manual_review_requested)) ||| AG (alert_triggered -> (AF (session_terminated | account_locked | manual_review_requested))) ||| AG (alert_triggered (AF (session_terminated | account_locked | manual_review_requested))) ||| AG (alert_triggered | AF (session_terminated | account_locked | manual_review_requested)) ||| AG (alarm_triggered -> AF (session_terminated | account_locked | manual_review_requested))
+19,"Always, if anomaly_score_high then there exists a path where eventually account_locked.",AG (anomaly_score_high -> EF account_locked),AG (anomaly_score_high -> AF account_locked),GENERAL,0.4509745369996381,true,0.010213543999270769,,AG (anomaly_score_high -> EF account_locked) ||| AG (anomaly_score_high -> AF account_locked) ||| AG (anomaly_score_high then AF account_locked) ||| AG (anomaly_score_high then EF account_locked) ||| AG (alarm_score_high -> AF account_locked) ||| AG (anomaly_score_high then EG account_locked) ||| AG (anomaly_score_high -> AF account_lock)
+20,There exists a path where geolocation_mismatch holds until account_locked.,E [ geolocation_mismatch U account_locked ],E [geolocation_mismatch U account_locked],UNTIL,0.38860211100109154,false,0.010412470999654033,"-- as demonstrated by the following execution sequence
+Trace Description: CTL Counterexample 
+Trace Type: Counterexample 
+  -> State: 1.1 <-
+    state = s0
+    malware_detected = FALSE
+    password_reset_required = FALSE
+    session_terminated = FALSE
+    account_locked = FALSE
+    manual_review_requested = FALSE
+    alert_triggered = FALSE
+    transaction_flagged = FALSE
+    threshold_breached = FALSE
+    anomaly_score_high = FALSE
+    ip_blacklisted = FALSE
+    geolocation_mismatch = FALSE
+    authentication_failed = FALSE
+    device_trusted = FALSE
+    session_active = FALSE
+    mfa_sent = FALSE
+    captcha_challenge = FALSE
+    auth_attempted = FALSE
+    login_page = TRUE
+",E [geolocation_mismatch U account_locked] ||| E [geolocation_mismatch U account_locked au courant] ||| E [geolocation_mismatch U accounts_locked] ||| E[geolocation_mismatch U account_locked] ||| E [geolocation_mismatch U account_locked in] ||| E [geolocation_mismatch U account_locked au titre]

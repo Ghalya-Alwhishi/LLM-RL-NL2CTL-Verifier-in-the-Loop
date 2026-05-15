@@ -1,0 +1,62 @@
+idx,nl,ctl_best,ctl_raw,model_used,translation_time_sec,nusmv_status,verification_time_sec,counterexample_snippet,nbest
+1,"Always, if login_page then there exists a path where eventually session_active.",AG (login_page -> EF session_active),AG (login_page -> E AF session_active),QWEN,0.2406111480013351,true,0.004599088000759366,,AG (login_page -> EF session_active) ||| AG (login_page -> E AX session_active) ||| AG (login_page -> E [AF session_active]) ||| AG (login_page -> E [AX session_active]) ||| AG (login_page -> E AE session_active) ||| AG (login_page -> EX session_active)
+2,"Always, if account_locked then always not session_active.",AG (account_locked -> AG !session_active),AG (account_locked -> A !session_active),QWEN,0.23930982899946684,false,0.00490861799880804,"-- as demonstrated by the following execution sequence
+Trace Description: CTL Counterexample 
+Trace Type: Counterexample 
+  -> State: 1.1 <-
+    state = s0
+    malware_detected = FALSE
+    password_reset_required = FALSE
+    session_terminated = FALSE
+    account_locked = FALSE
+    manual_review_requested = FALSE
+    alert_triggered = FALSE
+    transaction_flagged = FALSE
+    threshold_breached = FALSE
+    anomaly_score_high = FALSE
+    ip_blacklisted = FALSE
+    geolocation_mismatch = FALSE
+    authentication_failed = FALSE
+    device_trusted = FALSE
+    session_active = FALSE
+    mfa_sent = FALSE
+    captcha_challenge = FALSE
+    auth_attempted = FALSE
+    login_page = TRUE
+  -> State: 1.2 <-
+    state = s1
+    captcha_challenge = TRUE
+    auth_attempted = TRUE
+    login_page = FALSE
+  -> State: 1.3 <-
+    state = s4
+    authentication_failed = TRUE
+    captcha_challenge = FALSE
+    auth_attempted = FALSE
+  -> State: 1.4 <-
+    state = s8
+    account_locked = TRUE
+    alert_triggered = TRUE
+    authentication_failed = FALSE
+  -> State: 1.5 <-
+    state = s9
+    session_terminated = TRUE
+    account_locked = FALSE
+    alert_triggered = FALSE
+  -> State: 1.6 <-
+    state = s0
+    session_terminated = FALSE
+    login_page = TRUE
+  -> State: 1.7 <-
+    state = s1
+    captcha_challenge = TRUE
+    auth_attempted = TRUE
+    login_page = FALSE
+  -> State: 1.8 <-
+    state = s3
+    device_trusted = TRUE
+    session_active = TRUE
+    captcha_challenge = FALSE
+    auth_attempted = FALSE
+",AG (account_locked -> AG !session_active) ||| AG (account_locked -> A !session_active) ||| AG (account_locked -> AGV !session_active) ||| AG (account_locked -> AGL !session_active) ||| AG (account_locked -> AF !session_active)
+3,"Always, if anomaly_score_high then there exists a path where eventually account_locked.",AG (anomaly_score_high -> EF account_locked),AG (anomaly_score_high -> E AF account_locked),QWEN,0.24030856900026265,true,0.004533898001682246,,AG (anomaly_score_high -> EF account_locked) ||| AG (anomaly_score_high -> E AX account_locked) ||| AG (anomaly_score_low -> EF account_locked) ||| AG (anomaly_score_hard -> EF account_locked) ||| AG (anomaly_score_HIGH -> EF account_locked) ||| AG (anomaly_score_)
