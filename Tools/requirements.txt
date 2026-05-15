@@ -1,0 +1,13 @@
+torch
+transformers
+sentencepiece
+pandas
+numpy
+tqdm
+scikit-learn
+matplotlib
+gradio
+streamlit
+accelerate
+safetensors
+peft

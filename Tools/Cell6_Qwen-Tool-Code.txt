@@ -1,0 +1,144 @@
+# =========================
+# Cell 6 — Launch Qwen-only interactive tool
+# =========================
+
+import os
+import html
+import pandas as pd
+
+try:
+    import gradio as gr
+except ImportError:
+    import sys, subprocess
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "-q", "gradio"])
+    import gradio as gr
+
+def format_results_markdown(results):
+    parts = []
+    for r in results:
+        parts.append(f"### Requirement {r['idx']}")
+        parts.append(f"**NL:** {html.escape(r['nl'])}")
+        parts.append("")
+        parts.append("**Best CTL:**")
+        parts.append(f"```text\n{r['ctl_best'] or '(no output)'}\n```")
+
+        if "nusmv_status" in r:
+            parts.append(f"**NuSMV result:** `{r['nusmv_status']}`")
+            if r.get("counterexample_snippet"):
+                parts.append("**Counterexample (snippet):**")
+                parts.append(f"```text\n{r['counterexample_snippet']}\n```")
+
+        if r.get("nbest"):
+            parts.append("**N-best candidates:**")
+            for j, c in enumerate(r["nbest"], start=1):
+                parts.append(f"{j}. `{html.escape(c)}`")
+
+        parts.append("---")
+    return "\n".join(parts)
+
+def qwen_tool_run(
+    nl_text,
+    uploaded_smv_path,
+    verify,
+    decoding,
+    num_beams,
+    num_return,
+    max_new_tokens,
+    temperature,
+    top_p,
+    auto_fix_ctl,
+    timeout_s,
+):
+    try:
+        smv_text = None
+        if uploaded_smv_path and os.path.exists(uploaded_smv_path):
+            with open(uploaded_smv_path, "r", encoding="utf-8", errors="ignore") as f:
+                smv_text = f.read()
+
+        results, out_df = qwen_translate_requirements(
+            nl_text=nl_text,
+            smv_text=smv_text,
+            decoding=decoding,
+            num_beams=int(num_beams),
+            num_return=int(num_return),
+            max_new_tokens=int(max_new_tokens),
+            temperature=float(temperature),
+            top_p=float(top_p),
+            auto_fix_ctl=bool(auto_fix_ctl),
+            verify=bool(verify),
+            timeout_s=int(timeout_s),
+        )
+
+        md = format_results_markdown(results)
+        return md, out_df, str(QWEN_RESULTS_CSV)
+
+    except Exception as e:
+        err_df = pd.DataFrame([{"error": str(e)}])
+        return f"### Error\n```text\n{str(e)}\n```", err_df, None
+
+with gr.Blocks(title="Qwen NL → CTL Translation and Verification Tool") as demo:
+    gr.Markdown("# Qwen NL → CTL Translation and Verification Tool")
+    gr.Markdown("Upload an `.smv` case-study model if you want NuSMV verification, just like in the T5 tool.")
+
+    with gr.Row():
+        with gr.Column(scale=1):
+            nl_input = gr.Textbox(
+                label="Input: Natural Language specifications",
+                lines=12,
+                placeholder="Write one requirement per line.\nExample:\nAlways, session_active and account_locked are not both true."
+            )
+
+            uploaded_smv = gr.File(
+                label="Upload your case-study SMV model (.smv)",
+                file_types=[".smv"],
+                type="filepath"
+            )
+
+            verify_box = gr.Checkbox(
+                label="Enable NuSMV verification",
+                value=False
+            )
+
+            decoding = gr.Dropdown(
+                choices=["Beam search", "Sampling"],
+                value="Beam search",
+                label="Decoding"
+            )
+
+            num_beams = gr.Slider(1, 12, value=8, step=1, label="num_beams")
+            num_return = gr.Slider(1, 12, value=8, step=1, label="num_return (N-best)")
+            max_new_tokens = gr.Slider(16, 160, value=96, step=1, label="max_new_tokens")
+            temperature = gr.Slider(0.1, 2.0, value=0.8, step=0.1, label="temperature")
+            top_p = gr.Slider(0.1, 1.0, value=0.95, step=0.05, label="top_p")
+            auto_fix_ctl = gr.Checkbox(
+                label="Auto-fix CTL (parentheses + A/E [U] NuSMV style)",
+                value=True
+            )
+            timeout_s = gr.Slider(10, 300, value=60, step=1, label="NuSMV timeout (seconds)")
+
+            run_btn = gr.Button("Translate NL → CTL", variant="primary")
+
+        with gr.Column(scale=1):
+            markdown_output = gr.Markdown(label="Output")
+            table_output = gr.Dataframe(label="Results table")
+            csv_output = gr.File(label="Download results CSV")
+
+    run_btn.click(
+        fn=qwen_tool_run,
+        inputs=[
+            nl_input,
+            uploaded_smv,
+            verify_box,
+            decoding,
+            num_beams,
+            num_return,
+            max_new_tokens,
+            temperature,
+            top_p,
+            auto_fix_ctl,
+            timeout_s,
+        ],
+        outputs=[markdown_output, table_output, csv_output],
+    )
+
+demo.launch(share=False, debug=True)

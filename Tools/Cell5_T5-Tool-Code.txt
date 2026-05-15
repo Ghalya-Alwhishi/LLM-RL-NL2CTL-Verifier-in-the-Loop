@@ -1,0 +1,590 @@
+# =========================
+# Cell 5 — T5 helper functions and backend
+# =========================
+
+import re
+import tempfile
+import subprocess
+import time
+import pandas as pd
+from pathlib import Path
+from typing import List, Dict, Tuple
+
+# ------------------ small safe fixer ------------------
+WS_RE = re.compile(r"\s+")
+
+def fix_ctl(s: str) -> str:
+    if s is None:
+        return ""
+    s = s.replace("[ ", "[").replace(" ]", "]")
+    s = s.strip().replace(";", "")
+    s = WS_RE.sub(" ", s)
+    s = s.replace("! ", "!")
+    s = s.replace("( ", "(").replace(" )", ")")
+    return s.strip()
+
+CTL_OP_RE = re.compile(r"\b(AG|AF|AX|EG|EF|EX|A|E|U)\b")
+CTL_ALLOWED_RE = re.compile(r"^[A-Za-z0-9_ \t\r\n!&|()\[\]\-<>]+$")
+
+def is_ctl_like(s: str) -> bool:
+    if not s:
+        return False
+    s = s.strip()
+    if len(s) > 220:
+        return False
+    if s.count("(") != s.count(")"):
+        return False
+    if not CTL_ALLOWED_RE.match(s):
+        return False
+    return bool(CTL_OP_RE.search(s))
+
+UNARY_OPS = ("AG", "AF", "AX", "EG", "EF", "EX")
+
+def _has_top_level_bool_ops(expr: str) -> bool:
+    par = br = 0
+    i = 0
+    while i < len(expr):
+        ch = expr[i]
+        if ch == "(":
+            par += 1
+        elif ch == ")":
+            par = max(0, par - 1)
+        elif ch == "[":
+            br += 1
+        elif ch == "]":
+            br = max(0, br - 1)
+        elif par == 0 and br == 0:
+            if ch in ("|", "&"):
+                return True
+            if expr.startswith("->", i):
+                return True
+        i += 1
+    return False
+
+def repair_common_operators(nl: str, ctl: str) -> str:
+    nl_l = nl.lower()
+    s = ctl
+
+    if ("next state" in nl_l or "in the next" in nl_l or "next" in nl_l):
+        s = re.sub(r"->\s*EX\b", "-> AX", s)
+
+    if ("there exists a path" in nl_l or "exists a path" in nl_l):
+        s = re.sub(r"->\s*AF\b", "-> EF", s)
+
+    return s
+
+def _parenthesize_unary_args(s: str) -> str:
+    out = []
+    i = 0
+    n = len(s)
+
+    def is_boundary(idx: int) -> bool:
+        if idx < 0 or idx >= n:
+            return True
+        c = s[idx]
+        return not (c.isalnum() or c == "_")
+
+    while i < n:
+        matched = None
+        for op in UNARY_OPS:
+            if s.startswith(op, i) and is_boundary(i - 1) and is_boundary(i + len(op)):
+                matched = op
+                break
+
+        if not matched:
+            out.append(s[i])
+            i += 1
+            continue
+
+        out.append(matched)
+        i += len(matched)
+        while i < n and s[i].isspace():
+            out.append(s[i])
+            i += 1
+        if i >= n:
+            break
+
+        if s[i] in ("(", "["):
+            continue
+
+        j = i
+        par = br = 0
+        while j < n:
+            ch = s[j]
+            if ch == "(":
+                par += 1
+            elif ch == ")":
+                if par == 0 and br == 0:
+                    break
+                par = max(0, par - 1)
+            elif ch == "[":
+                br += 1
+            elif ch == "]":
+                if par == 0 and br == 0:
+                    break
+                br = max(0, br - 1)
+            j += 1
+
+        arg = s[i:j].strip()
+        if arg and not (arg.startswith("(") or arg.startswith("[")) and _has_top_level_bool_ops(arg):
+            out.append("(" + arg + ")")
+        else:
+            out.append(arg)
+
+        i = j
+
+    return "".join(out)
+
+def _has_top_level_u(expr: str) -> bool:
+    par = br = 0
+    i = 0
+    while i < len(expr):
+        ch = expr[i]
+        if ch == "(":
+            par += 1
+        elif ch == ")":
+            par = max(0, par - 1)
+        elif ch == "[":
+            br += 1
+        elif ch == "]":
+            br = max(0, br - 1)
+        elif par == 0 and br == 0:
+            if re.search(r"\bU\b", expr[i:]):
+                return True
+        i += 1
+    return False
+
+def _until_paren_to_bracket(s: str) -> str:
+    out = []
+    i = 0
+    n = len(s)
+
+    def is_boundary(idx: int) -> bool:
+        if idx < 0 or idx >= n:
+            return True
+        c = s[idx]
+        return not (c.isalnum() or c == "_")
+
+    while i < n:
+        ch = s[i]
+        if ch in ("A", "E") and is_boundary(i - 1) and is_boundary(i + 1):
+            out.append(ch)
+            i += 1
+            while i < n and s[i].isspace():
+                out.append(s[i])
+                i += 1
+            if i < n and s[i] == "(":
+                start = i
+                par = 0
+                j = i
+                while j < n:
+                    if s[j] == "(":
+                        par += 1
+                    elif s[j] == ")":
+                        par -= 1
+                        if par == 0:
+                            break
+                    j += 1
+                if j < n and s[j] == ")":
+                    inner = s[start + 1:j].strip()
+                    if _has_top_level_u(inner):
+                        out.append("[" + inner + "]")
+                        i = j + 1
+                        continue
+            continue
+
+        out.append(s[i])
+        i += 1
+
+    return "".join(out)
+
+def close_missing_closers(s: str) -> str:
+    if not s:
+        return s
+    s = s.strip()
+    b_open = s.count("[")
+    b_close = s.count("]")
+    if b_open > b_close:
+        s += "]" * (b_open - b_close)
+    p_open = s.count("(")
+    p_close = s.count(")")
+    if p_open > p_close:
+        s += ")" * (p_open - p_close)
+    return s
+
+def repair_until_rhs_parentheses(ctl: str) -> str:
+    pattern = r"(\b(A|E)\s*\[\s*[^][]+?\bU\b)\s*([^][]+?\|[^][]+?)\s*\]"
+    def repl(m):
+        left = m.group(1).strip()
+        rhs = m.group(3).strip()
+        if rhs.startswith("(") and rhs.endswith(")"):
+            return m.group(0)
+        return f"{left} ({rhs}) ]"
+    return re.sub(pattern, repl, ctl)
+
+def fix_until_when_all_paths(nl: str, ctl: str) -> str:
+    nl_l = nl.lower()
+    if "until" not in nl_l:
+        return ctl
+    if "all paths" not in nl_l and "on all paths" not in nl_l and "in all paths" not in nl_l:
+        return ctl
+
+    if re.search(r"\b(A|E)\s*\[.*\bU\b.*\]", ctl):
+        return ctl
+
+    m = re.search(r"\(\s*([^()]+?)\s+\bU\b\s+([^()]+?)\s*\)", ctl)
+    if not m:
+        return ctl
+
+    p = m.group(1).strip()
+    q = m.group(2).strip()
+    return f"A [ {p} U {q} ]"
+
+def repair_not_both(nl: str, ctl: str) -> str:
+    nl_l = nl.lower()
+    if ("not both" in nl_l or "cannot co-occur" in nl_l or "never both" in nl_l):
+        m = re.search(r"AG\s*\(\s*!\s*([A-Za-z_][A-Za-z0-9_]*)\s*&\s*([A-Za-z_][A-Za-z0-9_]*)\s*\)", ctl)
+        if m:
+            a, b = m.group(1), m.group(2)
+            return f"AG !({a} & {b})"
+        m2 = re.search(r"AG\s+!\s*([A-Za-z_][A-Za-z0-9_]*)\s*&\s*([A-Za-z_][A-Za-z0-9_]*)", ctl)
+        if m2:
+            a, b = m2.group(1), m2.group(2)
+            return f"AG !({a} & {b})"
+    return ctl
+
+def repair_eg_next(nl: str, ctl: str) -> str:
+    nl_l = nl.lower()
+    if ("there exists a path" in nl_l or "exists a path" in nl_l) and "EG" in ctl:
+        return re.sub(r"\bAX\b", "EX", ctl)
+    return ctl
+
+def normalize_ctl_for_nusmv(s: str) -> str:
+    s = fix_ctl(s)
+    if not s:
+        return s
+    s = WS_RE.sub(" ", s).strip()
+    s = _parenthesize_unary_args(s)
+    s = _until_paren_to_bracket(s)
+    s = WS_RE.sub(" ", s).replace("[ ", "[").replace(" ]", "]").strip()
+    return s
+
+def has_until_without_quantifier(s: str) -> bool:
+    if re.search(r"\bU\b", s) is None:
+        return False
+    return re.search(r"\b(A|E)\s*\[.*\bU\b.*\]", s) is None
+
+def bracket_used_without_until(s: str) -> bool:
+    m = re.search(r"\b(A|E)\s*\[(.*?)\]", s)
+    if not m:
+        return False
+    inside = m.group(2)
+    return re.search(r"\bU\b", inside) is None
+
+def contains_eaf_pattern(s: str) -> bool:
+    return re.search(r"\bE\s+AF\b", s) is not None or re.search(r"\bEAF\b", s) is not None
+
+def score_candidate(nl: str, cand: str) -> int:
+    nl_l = nl.lower()
+    s = 0
+
+    if cand.count("(") != cand.count(")") or cand.count("[") != cand.count("]"):
+        return -999
+    if has_until_without_quantifier(cand):
+        return -999
+    if bracket_used_without_until(cand):
+        s -= 10
+
+    if "until" in nl_l:
+        if re.search(r"\b(A|E)\s*\[.*\bU\b.*\]", cand):
+            s += 30
+        else:
+            s -= 20
+
+    if ("next" in nl_l or "next state" in nl_l):
+        if "AX" in cand:
+            s += 20
+        if "EX" in cand:
+            s += 10
+        if re.search(r"\b(A|E)\s*\[", cand) and "U" not in cand:
+            s -= 10
+
+    if ("there exists a path" in nl_l) or ("exists a path" in nl_l):
+        if "EF" in cand or "EG" in cand or re.search(r"\bE\s*\[", cand):
+            s += 20
+        if "AF" in cand:
+            s -= 10
+
+    if ("on all paths" in nl_l) or ("all paths" in nl_l) or ("in all paths" in nl_l):
+        if "AF" in cand or "AG" in cand or re.search(r"\bA\s*\[", cand):
+            s += 15
+        if "EF" in cand:
+            s -= 5
+
+    if ("not both" in nl_l) or ("cannot co-occur" in nl_l) or ("never" in nl_l):
+        if "AG !(" in cand or "AG!(" in cand:
+            s += 10
+
+    if contains_eaf_pattern(cand):
+        s -= 15
+
+    s += min(10, cand.count("->") * 2 + cand.count("U") * 2 + cand.count("AG") + cand.count("AF"))
+    return s
+
+def choose_best(nl: str, cands: List[str]) -> str:
+    if not cands:
+        return ""
+    scored = [(score_candidate(nl, c), c) for c in cands]
+    scored.sort(key=lambda x: x[0], reverse=True)
+    return scored[0][1]
+
+def strip_existing_specs(model_text: str) -> str:
+    out = []
+    for line in model_text.splitlines():
+        u = line.strip().upper()
+        if u.startswith("CTLSPEC") or u.startswith("LTLSPEC"):
+            continue
+        out.append(line)
+    return "\n".join(out) + "\n"
+
+def canonicalize_until_brackets(ctl: str) -> str:
+    def find_top_level_U(s: str) -> int:
+        par = 0
+        i = 0
+        while i < len(s):
+            ch = s[i]
+            if ch == "(":
+                par += 1
+            elif ch == ")":
+                par = max(0, par - 1)
+            if par == 0 and re.match(r"\bU\b", s[i:]):
+                return i
+            i += 1
+        return -1
+
+    def has_top_level_or(s: str) -> bool:
+        par = 0
+        for ch in s:
+            if ch == "(":
+                par += 1
+            elif ch == ")":
+                par = max(0, par - 1)
+            elif ch == "|" and par == 0:
+                return True
+        return False
+
+    def fix_one(m):
+        quant = m.group(1)
+        inner = m.group(2).strip()
+        inner = WS_RE.sub(" ", inner)
+
+        while inner.count(")") > inner.count("(") and inner.endswith(")"):
+            inner = inner[:-1].rstrip()
+
+        u_pos = find_top_level_U(inner)
+        if u_pos == -1:
+            return m.group(0)
+
+        lhs = inner[:u_pos].strip()
+        rhs = inner[u_pos+1:].strip()
+        rhs = re.sub(r"^\bU\b", "", rhs).strip()
+
+        rhs_stripped = rhs.strip()
+        if has_top_level_or(rhs_stripped) and not (rhs_stripped.startswith("(") and rhs_stripped.endswith(")")):
+            rhs_stripped = f"({rhs_stripped})"
+
+        return f"{quant} [ {lhs} U {rhs_stripped} ]"
+
+    return re.sub(r"\b([AE])\s*\[(.*?)\]", fix_one, ctl)
+
+def parse_nusmv_output(out: str) -> Tuple[str, str]:
+    lo = out.lower()
+    if "syntax error" in lo or "error" in lo:
+        return "nusmv_error", ""
+    status = "unknown"
+    if "-- specification" in lo and " is true" in lo:
+        status = "true"
+    elif "-- specification" in lo and " is false" in lo:
+        status = "false"
+
+    cex_snip = ""
+    if status == "false":
+        lines = out.splitlines()
+        start = None
+        for i, ln in enumerate(lines):
+            l = ln.lower()
+            if "as demonstrated" in l and ("execution sequence" in l or "counterexample" in l):
+                start = i
+                break
+        if start is not None:
+            cex_snip = "\n".join(lines[start:start + 80])
+    return status, cex_snip
+
+def run_nusmv_verification_on_text(smv_text: str, ctl_formula: str, timeout_s: int = 60):
+    smv_text = strip_existing_specs(smv_text)
+    with tempfile.TemporaryDirectory(prefix="t5_tool_") as tmpdir:
+        smv_path = Path(tmpdir) / "tmp_case_model.smv"
+        smv_path.write_text(smv_text + f"\nCTLSPEC {ctl_formula}\n", encoding="utf-8")
+
+        try:
+            proc = subprocess.run(
+                [NUSMV_BIN, str(smv_path)],
+                capture_output=True,
+                text=True,
+                timeout=timeout_s
+            )
+            out = (proc.stdout or "") + "\n" + (proc.stderr or "")
+            status, cex = parse_nusmv_output(out)
+            return status, cex
+        except subprocess.TimeoutExpired:
+            return "timeout", ""
+        except Exception as e:
+            return "nusmv_error", str(e)
+
+@torch.no_grad()
+def generate_nbest(
+    model,
+    tokenizer,
+    nl: str,
+    device: str,
+    decoding: str,
+    num_beams: int,
+    num_return: int,
+    max_new_tokens: int,
+    temperature: float,
+    top_p: float
+) -> List[str]:
+    enc = tokenizer(nl, return_tensors="pt", truncation=True, max_length=256).to(device)
+
+    gen_kwargs = dict(
+        max_new_tokens=max_new_tokens,
+        early_stopping=True,
+        repetition_penalty=1.25,
+        no_repeat_ngram_size=3
+    )
+
+    if decoding == "Beam search":
+        gen_kwargs.update(dict(
+            num_beams=num_beams,
+            num_return_sequences=num_return,
+            do_sample=False
+        ))
+    else:
+        gen_kwargs.update(dict(
+            do_sample=True,
+            temperature=temperature,
+            top_p=top_p,
+            num_return_sequences=num_return
+        ))
+
+    outs = model.generate(**enc, **gen_kwargs)
+    cands = tokenizer.batch_decode(outs, skip_special_tokens=True)
+
+    seen = set()
+    cleaned = []
+    for s in cands:
+        s2 = fix_ctl(s)
+        if s2 and s2 not in seen:
+            seen.add(s2)
+            cleaned.append(s2)
+
+    cleaned_ctl = [s for s in cleaned if is_ctl_like(s)]
+    return cleaned_ctl if cleaned_ctl else cleaned
+
+def t5_translate_requirements(
+    nl_text: str,
+    smv_text: str = None,
+    decoding: str = "Beam search",
+    num_beams: int = 8,
+    num_return: int = 8,
+    max_new_tokens: int = 96,
+    temperature: float = 0.8,
+    top_p: float = 0.95,
+    auto_fix_ctl: bool = True,
+    verify: bool = False,
+    timeout_s: int = 60,
+):
+    lines = [ln.strip() for ln in (nl_text or "").splitlines() if ln.strip()]
+    if not lines:
+        raise ValueError("Please provide at least one NL requirement.")
+
+    results = []
+
+    for i, nl in enumerate(lines, start=1):
+        use_until = ("until" in nl.lower())
+        use_model = model_until if use_until else model_general
+        use_tok = tok_until if use_until else tok_general
+
+        cands = generate_nbest(
+            model=use_model,
+            tokenizer=use_tok,
+            nl=nl,
+            device=DEVICE,
+            decoding=decoding,
+            num_beams=num_beams,
+            num_return=num_return,
+            max_new_tokens=max_new_tokens,
+            temperature=temperature,
+            top_p=top_p
+        )
+
+        raw_cands = cands[:]
+
+        if auto_fix_ctl and cands:
+            cands = [normalize_ctl_for_nusmv(x) for x in cands]
+            seen2 = set()
+            cands2 = []
+            for x in cands:
+                if x and x not in seen2:
+                    seen2.add(x)
+                    cands2.append(x)
+                cands = cands2
+
+        best = choose_best(nl, cands)
+        best = repair_common_operators(nl, best)
+        best = repair_not_both(nl, best)
+        best = repair_eg_next(nl, best)
+        best = canonicalize_until_brackets(best)
+        best = repair_until_rhs_parentheses(best)
+        best = close_missing_closers(best)
+
+        if best and best in cands:
+            cands = [best] + [x for x in cands if x != best]
+
+        row = {
+            "idx": i,
+            "nl": nl,
+            "ctl_best": best,
+            "ctl_raw": raw_cands[0] if raw_cands else "",
+            "nbest": cands,
+            "model_used": "UNTIL" if use_until else "GENERAL"
+        }
+
+        if verify and smv_text and best:
+            status, cex = run_nusmv_verification_on_text(
+                smv_text=smv_text,
+                ctl_formula=best,
+                timeout_s=timeout_s
+            )
+            row["nusmv_status"] = status
+            row["counterexample_snippet"] = cex
+
+        results.append(row)
+
+    out_df = pd.DataFrame([{
+        "idx": r["idx"],
+        "nl": r["nl"],
+        "ctl_best": r["ctl_best"],
+        "ctl_raw": r["ctl_raw"],
+        "model_used": r["model_used"],
+        "nusmv_status": r.get("nusmv_status", ""),
+        "counterexample_snippet": r.get("counterexample_snippet", ""),
+        "nbest": " ||| ".join(r["nbest"]) if r["nbest"] else "",
+    } for r in results])
+
+    out_df.to_csv(T5_RESULTS_CSV, index=False)
+
+    print(f"Saved results to: {T5_RESULTS_CSV}")
+    return results, out_df
+
+print("T5 Colab helper functions and backend are ready.")

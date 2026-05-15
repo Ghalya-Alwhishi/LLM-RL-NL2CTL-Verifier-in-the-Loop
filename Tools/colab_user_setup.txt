@@ -1,0 +1,29 @@
+# Google Colab User Setup
+
+This file explains what is needed to run the T5 and Qwen3 NL→CTL tools in Google Colab.
+
+You can start from an empty Colab notebook or use the provided notebook cells/notebook files.
+
+## Files Needed
+
+For the **T5 tool**, place these two folders in Google Drive:
+
+- `sft_out_rl_syntax_generate`
+- `sft_out_rl_syntax_generate_until`
+
+For the **Qwen3 tool**, place this folder in Google Drive:
+
+- `qwen_semantic_step20000_merged`
+
+For **both tools**, also keep:
+
+- the tool notebook cells or notebook file
+- the NuSMV executable in Google Drive
+- your `.smv` case-study file, which you will upload inside the tool
+
+## Packages Needed
+
+For the **T5 tool**, run:
+
+```python
+!pip install torch transformers sentencepiece pandas gradio
