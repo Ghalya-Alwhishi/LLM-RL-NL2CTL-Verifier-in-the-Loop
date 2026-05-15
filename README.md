@@ -1,43 +1,57 @@
-{
-  "alora_invocation_tokens": null,
-  "alpha_pattern": {},
-  "arrow_config": null,
-  "auto_mapping": null,
-  "base_model_name_or_path": "Qwen/Qwen3-8B-Base",
-  "bias": "none",
-  "corda_config": null,
-  "ensure_weight_tying": false,
-  "eva_config": null,
-  "exclude_modules": null,
-  "fan_in_fan_out": false,
-  "inference_mode": true,
-  "init_lora_weights": true,
-  "layer_replication": null,
-  "layers_pattern": null,
-  "layers_to_transform": null,
-  "loftq_config": {},
-  "lora_alpha": 32,
-  "lora_bias": false,
-  "lora_dropout": 0.05,
-  "megatron_config": null,
-  "megatron_core": "megatron.core",
-  "modules_to_save": null,
-  "peft_type": "LORA",
-  "peft_version": "0.18.1",
-  "qalora_group_size": 16,
-  "r": 16,
-  "rank_pattern": {},
-  "revision": null,
-  "target_modules": [
-    "k_proj",
-    "v_proj",
-    "o_proj",
-    "q_proj"
-  ],
-  "target_parameters": null,
-  "task_type": "CAUSAL_LM",
-  "trainable_token_indices": null,
-  "use_dora": false,
-  "use_qalora": false,
-  "use_rslora": false
-}
+# Beyond String Matching in LLM-Based NL-to-CTL Translation
+
+This repository contains the reproducibility package for the paper:
+
+**Beyond String Matching in LLM-Based NL-to-CTL Translation: Verifier-in-the-Loop Reinforcement Learning and Evaluation**
+
+The project studies the translation of natural-language (NL) requirements into Computation Tree Logic (CTL) formulas that are directly usable by the NuSMV model checker. The framework combines LLM-based translation, NuSMV-guided syntax evaluation, verifier-grounded semantic evaluation, reinforcement-learning-based refinement stages, and end-to-end NL→CTL→NuSMV tools.
+
+## Overview
+
+The repository supports the main experimental workflow reported in the paper:
+
+1. construction and validation of a NuSMV-compatible NL→CTL dataset;
+2. supervised fine-tuning of T5 and Qwen3 models for NL→CTL translation;
+3. NuSMV-guided syntax evaluation and refinement;
+4. verifier-grounded semantic evaluation using truth-set agreement over Kripke/SMV models;
+5. within-model and cross-model comparisons between T5 and Qwen3;
+6. deployment of interactive Streamlit tools for NL→CTL translation and optional NuSMV verification;
+7. cybersecurity case-study evaluation.
+
+## Repository Structure
+
+```text
+.
+├── README.md
+├── README_reproduction.md
+├── requirements.txt
+│
+├── datasets/
+│   ├── Cleaned_CTL_Dataset_nusmvOK.csv
+│   ├── train_split.csv
+│   ├── val_split.csv
+│   └── test_split.csv
+│
+├── models_or_checkpoints/
+│   └── checkpoint_instructions.md
+│
+├── results/
+│   ├── t5/
+│   ├── qwen3/
+│   
+│
+├
+├── case_study/
+│   ├── cybersecurity_model.smv
+│   ├── cybersecurity_requirements.csv
+│   └── case_study_outputs.csv
+│
+├── tools/
+│   ├── t5_streamlit_app.py
+│   └── qwen_streamlit_app.py
+│
+└── scripts/
+    ├── syntax_eval_nusmv.py
+    ├── semantic_truthset_eval.py
+    ├── train_sft.py
+    
